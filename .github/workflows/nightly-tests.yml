@@ -1,0 +1,47 @@
+
+name: Scheduled QIT Tests
+
+on:
+  schedule:
+    - cron: '0 1 * * *'  # Every day at 1:00 AM UTC. Woo Nightlies get generated at 12:00 AM UTC.
+  workflow_dispatch:       # Allow manual triggering
+
+jobs:
+  qit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: posix, curl, mbstring, xml, zip, phar, openssl
+
+      - name: Checkout with PAT
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: woocommerce/qit-action
+          path: .github/actions/qit-action
+
+      - name: Download WooCommerce Nightly
+        run: |
+          php qit-tests.php download:woo-nightly
+
+      - name: Run QIT Tests
+        id: qit-tests
+        uses: ./
+        with:
+          extension: woocommerce
+          zip: ./woocommerce.zip
+          config: ./config/nightly.json
+          partner-user: ${{ secrets.PARTNER_USER }}
+          partner-secret: ${{ secrets.PARTNER_SECRET }}
+
+      - name: Output test results
+        if: always()
+        run: |
+          echo "QIT Group ID: ${{ steps.qit-tests.outputs.group-id }}"
+          echo "Test completed - check results above" 
