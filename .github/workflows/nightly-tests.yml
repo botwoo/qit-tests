@@ -28,7 +28,7 @@ jobs:
 
       - name: Download WooCommerce Nightly
         run: |
-          php qit-tests.php download:woo-nightly
+          php src/qit-tests.php download:woo-nightly
 
       - name: Run QIT Tests
         id: qit-tests
