@@ -1,5 +1,5 @@
 
-name: Scheduled QIT Tests
+name: Woo Nightly Tests
 
 on:
   schedule:
