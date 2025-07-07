@@ -19,6 +19,10 @@ jobs:
           php-version: '8.4'
           extensions: posix, curl, mbstring, xml, zip, phar, openssl
 
+      - name: Install dependencies
+        run: |
+          composer install --no-dev
+
       - name: Checkout with PAT
         uses: actions/checkout@v4
         with:
