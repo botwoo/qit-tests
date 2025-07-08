@@ -1,7 +1,8 @@
 {
     "activation": [
         {
-            "php_version": "8.4"
+            "php_version": "8.4",
+            "woocommerce_version": "nightly"
         }
     ]
 }
