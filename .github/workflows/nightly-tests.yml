@@ -30,16 +30,16 @@ jobs:
           repository: woocommerce/qit-action
           path: .github/actions/qit-action
 
-      - name: Download WooCommerce Nightly
-        run: |
-          php src/qit-tests.php download:woo-nightly
+      # - name: Download WooCommerce Nightly
+      #   run: |
+      #     php src/qit-tests.php download:woo-nightly
 
       - name: Run QIT Tests
         id: qit-tests
         uses: ./.github/actions/qit-action
         with:
           extension: woocommerce
-          zip: ./woocommerce.zip
+          zip: ./woocommerce.zip # Not needed for nightly tests but required by the action.
           config: ./config/nightly.json
           partner-user: ${{ secrets.PARTNER_USER }}
           partner-secret: ${{ secrets.PARTNER_SECRET }}
