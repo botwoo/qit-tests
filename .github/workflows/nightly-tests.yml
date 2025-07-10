@@ -39,7 +39,7 @@ jobs:
         uses: ./.github/actions/qit-action
         with:
           extension: woocommerce
-          zip: ./woocommerce.zip # Not needed for nightly tests but required by the action.
+          zip: ./woocommerce.zip # Not needed for nightly/rc tests but required by the action.
           config: ./config/nightly.json
           partner-user: ${{ secrets.PARTNER_USER }}
           partner-secret: ${{ secrets.PARTNER_SECRET }}
