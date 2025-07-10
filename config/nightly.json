@@ -2,6 +2,10 @@
     "activation": [
         {
             "php_version": "8.4",
+            "woocommerce_version": "nightly"
+        },
+        {
+            "php_version": "8.4",
             "woocommerce_version": "nightly",
             "additional_plugins": [
                 "woocommerce-gift-cards",
