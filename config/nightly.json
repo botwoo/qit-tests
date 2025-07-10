@@ -2,56 +2,9 @@
     "activation": [
         {
             "php_version": "8.4",
-            "woocommerce_version": "nightly"
-        },
-        {
-            "php_version": "8.4",
             "woocommerce_version": "nightly",
             "additional_plugins": [
-                "woocommerce-gift-cards",
-                "addify-product-options-and-addons",
-                "product-brands-for-woocommerce",
-                "woocommerce-back-in-stock-notifications",
-                "woocommerce-min-max-quantities",
-                "woocommerce-product-bundles",
-                "woocommerce-product-recommendations",
-                "woocommerce-payments",
-                "woocommerce-avatax",
-                "woocommerce-eu-vat-number",
-                "automatewoo",
-                "woocommerce-shipping",
-                "woocommerce-shipment-tracking",
-                "woocommerce-shipping-australia-post",
-                "woocommerce-shipping-usps",
-                "woocommerce-shipping-canada-post",
-                "woocommerce-shipping-royalmail",
-                "woocommerce-shipping-fedex",
-                "woocommerce-shipping-ups",
-                "woocommerce-google-analytics-integration",
-                "tiktok-for-woocommerce",
-                "pinterest-for-woocommerce",
-                "google-listings-and-ads",
-                "woocommerce-subscriptions",
-                "woocommerce-all-products-for-subscriptions",
-                "woocommerce-subscriptions-gifting",
-                "woocommerce-subscription-downloads",
-                "woocommerce-additional-variation-images",
-                "automatewoo-birthdays",
-                "woocommerce-product-recommendations",
-                "automatewoo-referrals",
-                "woocommerce-composite-products",
-                "woocommerce-conditional-shipping-and-payments",
-                "mailpoet",
-                "woocommerce-product-csv-import-suite",
-                "woocommerce-warranty",
-                "woocommerce-table-rate-shipping",
-                "woocommerce-analytics",
-                "woocommerce-points-and-rewards",
-                "woocommerce-product-recommendations",
-                "woocommerce-services",
-                "woocommerce-gateway-stripe",
-                "woocommerce-square",
-                "woocommerce-paypal-payments"
+                "woocommerce-analytics"
             ]
         }
     ]
