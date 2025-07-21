@@ -51,6 +51,7 @@ jobs:
           echo "Test completed - check results above"
 
       - name: Fetch Results From QIT
+        if: always()
         run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > ouput.json
 
       - name: Output Results
