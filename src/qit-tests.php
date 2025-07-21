@@ -4,6 +4,7 @@ use lucatume\DI52\Container;
 use QitTests\App;
 use Symfony\Component\Console\Application;
 use QitTests\Commands\DownloadWooNightlyCommand;
+use QitTests\Commands\SlackNotificationCommand;
 
 try {
 
@@ -16,6 +17,7 @@ try {
     $app = new Application( 'QIT Tests', '1.0.0' );
 
     $app->add( new DownloadWooNightlyCommand() );
+    $app->add( new SlackNotificationCommand() );
     $app->run();
     
 } catch ( Exception $e ) {

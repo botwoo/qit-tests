@@ -52,7 +52,13 @@ jobs:
 
       - name: Fetch Results From QIT
         if: always()
-        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > ouput.json
+        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output.json
 
       - name: Output Results
-        run: cat ouput.json
+        run: cat output.json
+
+      - name: Send Slack Notification on Failures
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: php src/qit-tests.php slack:notify output.json
