@@ -62,6 +62,11 @@ jobs:
             --channel="${{ env.CHANNEL }}" \
             --output="./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json"
 
+      - name: Display generated config
+        run: |
+          echo "Generated configuration file contents:"
+          cat "./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json"
+
       - name: Download WooCommerce if needed
         run: php src/qit-tests.php download:woo-nightly
 
