@@ -5,6 +5,7 @@ use QitTests\App;
 use Symfony\Component\Console\Application;
 use QitTests\Commands\DownloadWooNightlyCommand;
 use QitTests\Commands\SlackNotificationCommand;
+use QitTests\Commands\GenerateConfigCommand;
 
 try {
 
@@ -18,6 +19,7 @@ try {
 
     $app->add( new DownloadWooNightlyCommand() );
     $app->add( new SlackNotificationCommand() );
+    $app->add( new GenerateConfigCommand() );
     $app->run();
     
 } catch ( Exception $e ) {
