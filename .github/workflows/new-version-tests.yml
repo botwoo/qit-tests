@@ -1,0 +1,102 @@
+name: New Version Tests
+
+on:
+  repository_dispatch:
+    types: [ qit-new-env-version ]
+  workflow_dispatch:       # Allow manual triggering
+    inputs:
+      platform:
+        description: 'Platform (WordPress or WooCommerce)'
+        required: true
+        default: 'WooCommerce'
+        type: choice
+        options:
+          - WordPress
+          - WooCommerce
+      version:
+        description: 'Version to test'
+        required: true
+        type: string
+      channel:
+        description: 'Release channel'
+        required: false
+        default: 'stable'
+        type: string
+
+jobs:
+  qit-tests:
+    runs-on: ubuntu-latest
+    env:
+      PLATFORM: ${{ github.event.client_payload.platform || inputs.platform }}
+      VERSION: ${{ github.event.client_payload.version || inputs.version }}
+      CHANNEL: ${{ github.event.client_payload.channel || inputs.channel }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: posix, curl, mbstring, xml, zip, phar, openssl
+
+      - name: Install dependencies
+        run: |
+          composer install --no-dev
+
+      - name: Log received event
+        run: |
+          echo "Received new version event:"
+          echo "Platform: ${{ env.PLATFORM }}"
+          echo "Version: ${{ env.VERSION }}"
+          echo "Channel: ${{ env.CHANNEL }}"
+          echo "Detected at: ${{ github.event.client_payload.detected_at }}"
+          echo "Source host: ${{ github.event.client_payload.source_host }}"
+
+      - name: Generate config file
+        run: |
+          php src/qit-tests.php generate:config \
+            --platform="${{ env.PLATFORM }}" \
+            --version="${{ env.VERSION }}" \
+            --channel="${{ env.CHANNEL }}" \
+            --output="./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json"
+
+      - name: Download WooCommerce if needed
+        run: php src/qit-tests.php download:woo-nightly
+
+      - name: Checkout with PAT
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: woocommerce/qit-action
+          path: .github/actions/qit-action
+
+      - name: Run QIT Tests
+        id: qit-tests
+        uses: ./.github/actions/qit-action
+        with:
+          extension: woocommerce
+          zip: ./woocommerce.zip # Not needed for nightly/rc tests but required by the action.
+          config: ./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+          partner-user: ${{ secrets.PARTNER_USER }}
+          partner-secret: ${{ secrets.PARTNER_SECRET }}
+
+      - name: Output test results
+        if: always()
+        run: |
+          echo "QIT Group ID: ${{ steps.qit-tests.outputs.group-id }}"
+          echo "Test completed for ${{ env.PLATFORM }} ${{ env.VERSION }} - check results above"
+
+      - name: Fetch Results From QIT
+        if: always()
+        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+
+      - name: Output Results
+        run: cat output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+
+      - name: Send Slack Notification on Failures
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: php src/qit-tests.php slack:notify output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
