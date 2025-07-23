@@ -22,7 +22,7 @@ class GenerateConfigCommand extends Command {
             ->setDescription( self::$defaultDescription )
             ->setHelp('This command generates a QIT test configuration file based on the platform, version, and channel provided.')
             ->addOption('platform', 'p', InputOption::VALUE_REQUIRED, 'Platform (WordPress or WooCommerce)')
-            ->addOption('version', 'v', InputOption::VALUE_REQUIRED, 'Version number to test')
+            ->addOption('target-version', 't', InputOption::VALUE_REQUIRED, 'Version number to test')
             ->addOption('channel', 'c', InputOption::VALUE_OPTIONAL, 'Release channel', 'stable')
             ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file path', './config/generated-config.json');
     }
@@ -31,12 +31,12 @@ class GenerateConfigCommand extends Command {
         $io = new SymfonyStyle($input, $output);
         
         $platform = $input->getOption('platform');
-        $version = $input->getOption('version');
+        $version = $input->getOption('target-version');
         $channel = $input->getOption('channel');
         $output_file = $input->getOption('output');
 
         if (!$platform || !$version) {
-            $io->error('Both --platform and --version options are required.');
+            $io->error('Both --platform and --target-version options are required.');
             return Command::FAILURE;
         }
 

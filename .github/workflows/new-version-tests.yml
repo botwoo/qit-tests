@@ -58,7 +58,7 @@ jobs:
         run: |
           php src/qit-tests.php generate:config \
             --platform="${{ env.PLATFORM }}" \
-            --version="${{ env.VERSION }}" \
+            --target-version="${{ env.VERSION }}" \
             --channel="${{ env.CHANNEL }}" \
             --output="./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json"
 
