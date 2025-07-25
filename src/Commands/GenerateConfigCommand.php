@@ -96,17 +96,13 @@ class GenerateConfigCommand extends Command {
         // Use the actual version if it's not nightly, otherwise use 'nightly'
         $woo_version = ($channel === 'nightly') ? 'nightly' : $version;
         
-        return [
-            [
-                "php_version" => "8.4",
-                "woocommerce_version" => $woo_version
-            ],
-            [
-                "php_version" => "7.4",
-                "woocommerce_version" => $woo_version,
-                "additional_plugins" => $this->get_additional_plugins()
-            ]
-        ];
+        return $this->generate_test_matrix([
+            'php_version' => '8.4',
+            'woocommerce_version' => $woo_version
+        ], [
+            'php_version' => '7.4',
+            'woocommerce_version' => $woo_version
+        ]);
     }
 
     /**
@@ -118,28 +114,66 @@ class GenerateConfigCommand extends Command {
      */
     private function get_wordpress_config(string $version, string $channel): array {
         // For WordPress, we still test with WooCommerce nightly but use the specific WordPress version
-        return [
-            [
-                "php_version" => "8.4",
-                "wordpress_version" => $version,
-                "woocommerce_version" => "nightly"
-            ],
-            [
-                "php_version" => "7.4", 
-                "wordpress_version" => $version,
-                "woocommerce_version" => "nightly",
-                "additional_plugins" => $this->get_additional_plugins()
-            ]
-        ];
+        return $this->generate_test_matrix([
+            'php_version' => '8.4',
+            'wordpress_version' => $version
+        ], [
+            'php_version' => '7.4',
+            'wordpress_version' => $version
+        ]);
     }
 
     /**
-     * Get the list of additional plugins to test with.
+     * Generate test matrix with basic test + all plugin group tests.
+     *
+     * @param array $basic_config Basic configuration without plugins
+     * @param array $plugin_config Base configuration for plugin tests
+     * @return array
+     * @throws Exception
+     */
+    private function generate_test_matrix(array $basic_config, array $plugin_config): array {
+        $plugin_methods = [
+            'get_canonical_plugins',
+            'get_essentials_revshare_plugins',
+            'get_sales_marketing_plugins',
+            'get_subscriptions_memberships_plugins',
+            'get_lms_commerce_plugins',
+            'get_complex_shipping_plugins',
+            'get_fullstack_business_plugins'
+        ];
+
+        $test_matrix = [ $basic_config ];
+
+        foreach ($plugin_methods as $method) {
+            if (!method_exists($this, $method)) {
+                throw new Exception("Plugin method '{$method}' does not exist. Please ensure the method is implemented.");
+            }
+
+            if (!is_callable([$this, $method])) {
+                throw new Exception("Plugin method '{$method}' is not callable. Please check method visibility.");
+            }
+
+            $plugins = $this->$method();
+            
+            if (!is_array($plugins)) {
+                throw new Exception("Plugin method '{$method}' must return an array, " . gettype($plugins) . " returned.");
+            }
+
+            $test_matrix[] = array_merge($plugin_config, [
+                'additional_plugins' => $plugins
+            ]);
+        }
+
+        return $test_matrix;
+    }
+
+    /**
+     * Get the canonical list of plugins to test with.
      * Based on the nightly.json configuration.
      *
      * @return array
      */
-    private function get_additional_plugins(): array {
+    private function get_canonical_plugins(): array {
         return [
             "woocommerce-gift-cards",
             "addify-product-options-and-addons",
@@ -183,6 +217,120 @@ class GenerateConfigCommand extends Command {
             "woocommerce-gateway-stripe",
             "woocommerce-square",
             "woocommerce-paypal-payments"
+        ];
+    }
+
+    /**
+     * Get Essentials + Rev Share plugins.
+     *
+     * @return array
+     */
+    private function get_essentials_revshare_plugins(): array {
+        return [
+            "woocommerce-payments",
+            "google-listings-and-ads",
+            "facebook-for-woocommerce",
+            "woocommerce-gateway-stripe",
+            "woocommerce-paypal-payments",
+            "woocommerce-services", // WooCommerce Shipping & Tax
+            "elementor",
+            "wp-mail-smtp",
+            "wordpress-seo"
+        ];
+    }
+
+    /**
+     * Get Sales and Marketing plugins.
+     *
+     * @return array
+     */
+    private function get_sales_marketing_plugins(): array {
+        return [
+            "woocommerce-payments",
+            "google-listings-and-ads",
+            "facebook-for-woocommerce",
+            "pinterest-for-woocommerce",
+            "tiktok-for-woocommerce",
+            "mailpoet",
+            "automatewoo",
+            "woocommerce-smart-coupons",
+            "woocommerce-services" // WooCommerce Shipping & Tax
+        ];
+    }
+
+    /**
+     * Get Subscriptions and Memberships Site plugins.
+     *
+     * @return array
+     */
+    private function get_subscriptions_memberships_plugins(): array {
+        return [
+            "woocommerce-subscriptions",
+            "woocommerce-memberships",
+            "woocommerce-payments",
+            "woocommerce-smart-coupons",
+            "google-listings-and-ads",
+            "automatewoo",
+            "woocommerce-zapier",
+            "woocommerce-gateway-stripe",
+            "elementor"
+        ];
+    }
+
+    /**
+     * Get LMS + Commerce Hybrid plugins.
+     *
+     * @return array
+     */
+    private function get_lms_commerce_plugins(): array {
+        return [
+            "sensei-lms",
+            "woocommerce-subscriptions",
+            "woocommerce-payments",
+            "google-listings-and-ads",
+            "mailchimp-for-woocommerce",
+            "automatewoo",
+            "elementor",
+            "woocommerce-gift-cards",
+            "woocommerce-zapier"
+        ];
+    }
+
+    /**
+     * Get Complex Shipping plugins.
+     *
+     * @return array
+     */
+    private function get_complex_shipping_plugins(): array {
+        return [
+            "woocommerce-payments",
+            "google-listings-and-ads",
+            "woocommerce-shipstation-integration",
+            "woocommerce-shipping-usps",
+            "woocommerce-shipment-tracking",
+            "woocommerce-conditional-shipping-and-payments",
+            "woocommerce-gateway-stripe",
+            "woocommerce-paypal-payments",
+            "woocommerce-table-rate-shipping"
+        ];
+    }
+
+    /**
+     * Get Full-Stack Business Store plugins.
+     *
+     * @return array
+     */
+    private function get_fullstack_business_plugins(): array {
+        return [
+            "woocommerce-subscriptions",
+            "woocommerce-payments",
+            "google-listings-and-ads",
+            "facebook-for-woocommerce",
+            "woocommerce-zapier",
+            "automatewoo",
+            "woocommerce-gateway-stripe",
+            "mailpoet",
+            "elementor"
         ];
     }
 
