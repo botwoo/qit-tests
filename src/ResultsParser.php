@@ -92,13 +92,14 @@ class ResultsParser {
             $log_sources[] = implode("\n", $test_run['deprecation_warnings']);
         }
 
-        if (!empty($test_run['attachments'])) {
-            foreach ($test_run['attachments'] as $attachment) {
-                if (isset($attachment['data']['PHP Debug Log']) && is_array($attachment['data']['PHP Debug Log'])) {
-                    $log_sources[] = implode("\n", $attachment['data']['PHP Debug Log']);
+        // Parse test_media for PHP Debug Log and JavaScript Console Log
+        if (!empty($test_run['test_media']) && is_array($test_run['test_media'])) {
+            foreach ($test_run['test_media'] as $media_item) {
+                if (isset($media_item['data']['PHP Debug Log']) && is_array($media_item['data']['PHP Debug Log'])) {
+                    $log_sources[] = implode("\n", $media_item['data']['PHP Debug Log']);
                 }
-                if (isset($attachment['data']['JavaScript Console Log']) && is_array($attachment['data']['JavaScript Console Log'])) {
-                    $log_sources[] = implode("\n", $attachment['data']['JavaScript Console Log']);
+                if (isset($media_item['data']['JavaScript Console Log']) && is_array($media_item['data']['JavaScript Console Log'])) {
+                    $log_sources[] = implode("\n", $media_item['data']['JavaScript Console Log']);
                 }
             }
         }
