@@ -381,9 +381,7 @@ class SlackNotificationCommand extends Command {
         }
 
         $message = sprintf(
-            "QIT test failures detected: %d of %d tests failed\n*Status:* %s\n*Environment:* WP %s, WC %s, PHP %s",
-            $failed_count,
-            $total_tests,
+            "QIT test failures detected!\n*Status:* %s\n*Environment:* WP %s, WC %s, PHP %s",
             $status,
             $wordpress_version,
             $woocommerce_version,
@@ -391,7 +389,7 @@ class SlackNotificationCommand extends Command {
         );
 
         if (!empty($manager_url)) {
-            $message .= sprintf("\n*Manager:* %s", $manager_url);
+            $message .= sprintf("\n*Test Results URL:* %s", $manager_url);
         }
 
         return [
