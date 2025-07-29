@@ -4,6 +4,7 @@ namespace QitTests\Commands;
 
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -22,21 +23,31 @@ class SlackNotificationCommand extends Command {
             ->setName( self::$defaultName )
             ->setDescription( self::$defaultDescription )
             ->setHelp('This command reads QIT test results from a JSON file and sends Slack notifications only when there are test failures.')
-            ->addArgument('json-file', InputArgument::REQUIRED, 'Path to the JSON file containing test results');
+            ->addArgument('json-file', InputArgument::REQUIRED, 'Path to the JSON file containing test results')
+            ->addOption('qit', null, InputOption::VALUE_NONE, 'Send to QIT webhook instead of Slack');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {
         $io = new SymfonyStyle($input, $output);
         $json_file = $input->getArgument('json-file');
+        $use_qit = $input->getOption('qit');
 
         $io->title('QIT Slack Notifier');
 
         try {
-            // Check if Slack webhook URL is available
-            $webhook_url = $this->get_slack_webhook_url();
-            if (!$webhook_url) {
-                $io->warning('No Slack webhook URL provided. Set SLACK_WEBHOOK_URL environment variable.');
-                return Command::SUCCESS;
+            // Check webhook URL based on mode
+            if ($use_qit) {
+                $webhook_url = $this->get_qit_webhook_url();
+                if (!$webhook_url) {
+                    $io->warning('No QIT webhook URL provided. Set QIT_WEBHOOK_URL environment variable.');
+                    return Command::SUCCESS;
+                }
+            } else {
+                $webhook_url = $this->get_slack_webhook_url();
+                if (!$webhook_url) {
+                    $io->warning('No Slack webhook URL provided. Set SLACK_WEBHOOK_URL environment variable.');
+                    return Command::SUCCESS;
+                }
             }
 
             // Read and parse the JSON file
@@ -46,16 +57,23 @@ class SlackNotificationCommand extends Command {
             $failures = $this->check_for_failures($test_results);
 
             if (empty($failures)) {
-                $io->success('All tests passed! No Slack notification needed.');
+                $io->success('All tests passed! No notification needed.');
                 return Command::SUCCESS;
             }
 
-            $io->text(sprintf('Found %d failed test run(s). Sending Slack notification...', count($failures)));
+            $notification_type = $use_qit ? 'QIT' : 'Slack';
+            $io->text(sprintf('Found %d failed test run(s). Sending %s notification...', count($failures), $notification_type));
 
-            // Send Slack notification
-            $this->send_slack_notification($webhook_url, $test_results, $failures, $io);
+            if ($use_qit) {
+                // Send QIT notification
+                $this->send_qit_notification($webhook_url, $test_results, $failures, $io);
+                $io->success('QIT notification sent successfully.');
+            } else {
+                // Send Slack notification
+                $this->send_slack_notification($webhook_url, $test_results, $failures, $io);
+                $io->success('Slack notification sent successfully.');
+            }
 
-            $io->success('Slack notification sent successfully.');
             return Command::SUCCESS;
 
         } catch (Exception $e) {
@@ -71,6 +89,15 @@ class SlackNotificationCommand extends Command {
      */
     private function get_slack_webhook_url(): ?string {
         return getenv('SLACK_WEBHOOK_URL') ?: null;
+    }
+
+    /**
+     * Get QIT webhook URL from environment variables.
+     *
+     * @return string|null
+     */
+    private function get_qit_webhook_url(): ?string {
+        return getenv('QIT_WEBHOOK_URL') ?: null;
     }
 
     /**
@@ -161,6 +188,70 @@ class SlackNotificationCommand extends Command {
 
         if ($response !== 'ok') {
             throw new Exception('Slack API returned error: ' . $response);
+        }
+    }
+
+    /**
+     * Send QIT notification for test failures.
+     *
+     * @param string $webhook_url
+     * @param array $test_results
+     * @param array $failures
+     * @param SymfonyStyle $io
+     * @throws Exception
+     */
+    private function send_qit_notification(string $webhook_url, array $test_results, array $failures, SymfonyStyle $io): void {
+        $group_id = $test_results['group_identifier'] ?? 'Unknown';
+        $total_tests = count($test_results['test_runs']);
+        $failed_count = count($failures);
+
+        // Extract all plugins from failed tests
+        $all_plugins = [];
+        $parser = new ResultsParser();
+        
+        foreach ($failures as $failure) {
+            $plugin_info = $parser->extract_plugin_info_from_failed_test($failure);
+            if ($plugin_info && !empty($plugin_info['plugin_slugs'])) {
+                $all_plugins = array_merge($all_plugins, $plugin_info['plugin_slugs']);
+            }
+        }
+        
+        $unique_plugins = array_values(array_unique($all_plugins));
+
+        // Build message blocks without plugin information
+        $message_blocks = $this->build_qit_message($group_id, $total_tests, $failed_count, $failures);
+
+        // Get CI secret for authentication
+        $ci_secret = getenv('CI_SECRET');
+        if (!$ci_secret) {
+            throw new Exception('CI_SECRET environment variable is required for QIT authentication');
+        }
+
+        $payload = json_encode([
+            'message' => [
+                'text' => 'QIT Test Failures Detected',
+                'blocks' => $message_blocks
+            ],
+            'plugins' => $unique_plugins,
+            'ci_secret' => $ci_secret
+        ]);
+
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => [
+                    'Content-Type: application/json',
+                    'Content-Length: ' . strlen($payload)
+                ],
+                'content' => $payload,
+                'timeout' => 30
+            ]
+        ]);
+
+        $response = file_get_contents($webhook_url, false, $context);
+        
+        if ($response === false) {
+            throw new Exception('Failed to send QIT notification');
         }
     }
 
@@ -257,6 +348,61 @@ class SlackNotificationCommand extends Command {
         }
 
         return $blocks;
+    }
+
+    /**
+     * Build generic QIT message blocks for test failures.
+     * Includes manager URL, status, and environment.
+     *
+     * @param string $group_id
+     * @param int $total_tests
+     * @param int $failed_count
+     * @param array $failures
+     * @return array
+     */
+    private function build_qit_message(string $group_id, int $total_tests, int $failed_count, array $failures): array {
+        // Get basic info from first failure for environment details
+        $first_failure = $failures[0] ?? [];
+        $parser = new ResultsParser();
+        $plugin_info = $parser->extract_plugin_info_from_failed_test($first_failure);
+        
+        if ($plugin_info) {
+            $wordpress_version = $plugin_info['wordpress_version'];
+            $woocommerce_version = $plugin_info['woocommerce_version'];
+            $php_version = $plugin_info['php_version'];
+            $status = $plugin_info['status'];
+            $manager_url = $plugin_info['test_results_manager_url'];
+        } else {
+            $wordpress_version = $first_failure['wordpress_version'] ?? 'Unknown';
+            $woocommerce_version = $first_failure['woocommerce_version'] ?? 'Unknown';
+            $php_version = $first_failure['php_version'] ?? 'Unknown';
+            $status = $first_failure['status'] ?? 'failed';
+            $manager_url = $first_failure['test_results_manager_url'] ?? '';
+        }
+
+        $message = sprintf(
+            'QIT test failures detected: %d of %d tests failed | Status: %s | Environment: WP %s, WC %s, PHP %s',
+            $failed_count,
+            $total_tests,
+            $status,
+            $wordpress_version,
+            $woocommerce_version,
+            $php_version
+        );
+
+        if (!empty($manager_url)) {
+            $message .= sprintf(' | Manager: %s', $manager_url);
+        }
+
+        return [
+            [
+                'type' => 'section',
+                'text' => [
+                    'type' => 'plain_text',
+                    'text' => $message
+                ]
+            ]
+        ];
     }
 
 

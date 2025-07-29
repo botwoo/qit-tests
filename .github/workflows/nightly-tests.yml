@@ -58,8 +58,9 @@ jobs:
         if: always()
         run: cat output.json
 
-      - name: Send Slack Notification on Failures
+      - name: Send QIT Notification on Failures
         if: always()
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: php src/qit-tests.php slack:notify output.json
+          QIT_WEBHOOK_URL: ${{ secrets.QIT_WEBHOOK_URL }}
+          CI_SECRET: ${{ secrets.CI_SECRET }}
+        run: php src/qit-tests.php slack:notify output.json --qit
