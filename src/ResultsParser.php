@@ -166,35 +166,35 @@ class ResultsParser {
         $plugins = [];
 
         // Pattern 1: File paths - wp-content/plugins/plugin-name/
-        if (preg_match_all('/wp-content[\/\\\\]+plugins[\/\\\\]+([^\/\\\\]+)[\/\\\\]/', $log_content, $matches)) {
+        if (preg_match_all('/wp-content[\/\\\\]+plugins[\/\\\\]+([a-zA-Z0-9\-_]+)[\/\\\\]/', $log_content, $matches)) {
             $plugins = array_merge($plugins, $matches[1]);
         }
 
         // Pattern 2: Plugin installation URLs - downloads.wordpress.org/plugin/plugin-name.version.zip
-        if (preg_match_all('/downloads\.wordpress\.org[\/\\\\]+plugin[\/\\\\]+([^\.\/\\\\]+)\.[\d\.]+\.zip/', $log_content, $matches)) {
+        if (preg_match_all('/downloads\.wordpress\.org[\/\\\\]+plugin[\/\\\\]+([a-zA-Z0-9\-_]+)\.[\d\.]+\.zip/', $log_content, $matches)) {
             $plugins = array_merge($plugins, $matches[1]);
         }
 
-        // Pattern 3: Plugin domains in text - Translation loading for the <code>plugin-name</code>
-        if (preg_match_all('/<code>([^<]+)<\/code>/', $log_content, $matches)) {
+        // Pattern 3: Plugin domains in HTML code tags - <code>plugin-name</code>
+        if (preg_match_all('/<code>([a-zA-Z0-9\-_]+)<\/code>/', $log_content, $matches)) {
             $plugins = array_merge($plugins, $matches[1]);
         }
 
         // Pattern 4: Plugin activation messages - Activating 'plugin-name'
-        if (preg_match_all('/Activating \'([^\']+)\'/', $log_content, $matches)) {
+        if (preg_match_all('/Activating \'([a-zA-Z0-9\-_]+)\'/', $log_content, $matches)) {
             $plugins = array_merge($plugins, $matches[1]);
         }
 
-        // Pattern 5: Plugin script dependencies - extension-plugin-name-script
-        if (preg_match_all('/extension-([^-]+(?:-[^-]+)*)-(?:editor-)?script/', $log_content, $matches)) {
+        // Pattern 5: Plugin script dependencies - extension-plugin-name-editor-script
+        if (preg_match_all('/extension-([a-zA-Z0-9\-_]+)-(?:editor-)?script/', $log_content, $matches)) {
             $plugins = array_merge($plugins, $matches[1]);
         }
 
-        // Pattern 6: Plugin file extensions - plugin-name.php
-        if (preg_match_all('/([a-zA-Z0-9\-_]+)\.php/', $log_content, $matches)) {
-            // Filter to only include likely plugin files (not WordPress core files)
+        // Pattern 6: Specific script patterns - plugin-name-script
+        if (preg_match_all('/([a-zA-Z0-9\-_]+)-(?:editor-)?script/', $log_content, $matches)) {
+            // Only include if it looks like a plugin (contains hyphens and is reasonable length)
             foreach ($matches[1] as $match) {
-                if (!in_array($match, ['index', 'wp-config', 'functions', 'wp-settings', 'wp-load'])) {
+                if (strpos($match, '-') !== false && strlen($match) > 3 && strlen($match) < 50) {
                     $plugins[] = $match;
                 }
             }
