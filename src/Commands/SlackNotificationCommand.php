@@ -7,6 +7,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use QitTests\ResultsParser;
 use Exception;
 
 /**
@@ -197,11 +198,29 @@ class SlackNotificationCommand extends Command {
 
         // Add details for each failed test
         foreach ($failures as $index => $failure) {
-            $test_type = $failure['test_type_display'] ?? $failure['test_type'] ?? 'Unknown';
-            $wordpress_version = $failure['wordpress_version'] ?? 'Unknown';
-            $woocommerce_version = $failure['woocommerce_version'] ?? 'Unknown';
-            $php_version = $failure['php_version'] ?? 'Unknown';
-            $status = $failure['status'] ?? 'Unknown';
+            // Extract comprehensive plugin information using ResultsParser
+            $parser = new ResultsParser();
+            $plugin_info = $parser->extract_plugin_info_from_failed_test($failure);
+            
+            if ($plugin_info) {
+                // Use the structured data from parser
+                $test_type = $plugin_info['test_type_display'];
+                $wordpress_version = $plugin_info['wordpress_version'];
+                $woocommerce_version = $plugin_info['woocommerce_version'];
+                $php_version = $plugin_info['php_version'];
+                $status = $plugin_info['status'];
+                $test_results_manager_url = $plugin_info['test_results_manager_url'];
+                $plugins = $plugin_info['plugin_slugs'];
+            } else {
+                // Fallback if no plugins found - use original failure data
+                $test_type = $failure['test_type_display'] ?? $failure['test_type'] ?? 'Unknown';
+                $wordpress_version = $failure['wordpress_version'] ?? 'Unknown';
+                $woocommerce_version = $failure['woocommerce_version'] ?? 'Unknown';
+                $php_version = $failure['php_version'] ?? 'Unknown';
+                $status = $failure['status'] ?? 'Unknown';
+                $test_results_manager_url = $failure['test_results_manager_url'] ?? '';
+                $plugins = [];
+            }
 
             $block_text = sprintf(
                 "*Test Type:* %s\n*Status:* %s\n*WordPress:* %s | *WooCommerce:* %s | *PHP:* %s",
@@ -212,9 +231,15 @@ class SlackNotificationCommand extends Command {
                 $php_version
             );
 
+            // Add plugin information if available
+            if (!empty($plugins)) {
+                $plugin_list = implode(', ', $plugins);
+                $block_text .= sprintf("\n*Plugins with Issues:* %s", $plugin_list);
+            }
+
             // Add manager URL link if available
-            if (!empty($failure['test_results_manager_url'])) {
-                $block_text .= sprintf("\n*View Results:* <%s|Open Test Results>", $failure['test_results_manager_url']);
+            if (!empty($test_results_manager_url)) {
+                $block_text .= sprintf("\n*View Results:* <%s|Open Test Results>", $test_results_manager_url);
             }
 
             $blocks[] = [
@@ -233,4 +258,6 @@ class SlackNotificationCommand extends Command {
 
         return $blocks;
     }
+
+
 } 
