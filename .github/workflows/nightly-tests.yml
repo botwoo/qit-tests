@@ -55,6 +55,7 @@ jobs:
         run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output.json
 
       - name: Output Results
+        if: always()
         run: cat output.json
 
       - name: Send Slack Notification on Failures
