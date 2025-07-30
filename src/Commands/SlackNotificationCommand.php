@@ -381,7 +381,7 @@ class SlackNotificationCommand extends Command {
         }
 
         $message = sprintf(
-            "QIT test failures detected!\n*Status:* %s\n*Environment:* WP %s, WC %s, PHP %s",
+            "*Status:* %s\n*Environment:* WP %s, WC %s, PHP %s",
             $status,
             $wordpress_version,
             $woocommerce_version,
