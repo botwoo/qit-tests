@@ -26,10 +26,14 @@ on:
 jobs:
   qit-tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config_type: [canonical, legacy]
     env:
       PLATFORM: ${{ github.event.client_payload.platform || inputs.platform }}
       VERSION: ${{ github.event.client_payload.version || inputs.version }}
       CHANNEL: ${{ github.event.client_payload.channel || inputs.channel }}
+      CONFIG_TYPE: ${{ matrix.config_type }}
     
     steps:
       - name: Checkout repository
@@ -54,7 +58,7 @@ jobs:
           echo "Detected at: ${{ github.event.client_payload.detected_at }}"
           echo "Source host: ${{ github.event.client_payload.source_host }}"
 
-      - name: Generate config file
+      - name: Generate config files
         run: |
           php src/qit-tests.php generate:config \
             --platform="${{ env.PLATFORM }}" \
@@ -64,8 +68,8 @@ jobs:
 
       - name: Display generated config
         run: |
-          echo "Generated configuration file contents:"
-          cat "./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json"
+          echo "Generated configuration file contents (${{ env.CONFIG_TYPE }}):"
+          cat "./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json"
 
       - name: Download WooCommerce if needed
         run: php src/qit-tests.php download:woo-nightly
@@ -77,13 +81,13 @@ jobs:
           repository: woocommerce/qit-action
           path: .github/actions/qit-action
 
-      - name: Run QIT Tests
+      - name: Run QIT Tests (${{ env.CONFIG_TYPE }})
         id: qit-tests
         uses: ./.github/actions/qit-action
         with:
           extension: woocommerce
           zip: ./woocommerce.zip # Not needed for nightly/rc tests but required by the action.
-          config: ./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+          config: ./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json
           partner-user: ${{ secrets.PARTNER_USER }}
           partner-secret: ${{ secrets.PARTNER_SECRET }}
 
@@ -91,17 +95,17 @@ jobs:
         if: always()
         run: |
           echo "QIT Group ID: ${{ steps.qit-tests.outputs.group-id }}"
-          echo "Test completed for ${{ env.PLATFORM }} ${{ env.VERSION }} - check results above"
+          echo "Test completed for ${{ env.PLATFORM }} ${{ env.VERSION }} (${{ env.CONFIG_TYPE }}) - check results above"
 
       - name: Fetch Results From QIT
         if: always()
-        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json
 
       - name: Output Results
-        run: cat output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+        run: cat output-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json
 
       - name: Send Slack Notification on Failures
         if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: php src/qit-tests.php slack:notify output-${{ env.PLATFORM }}-${{ env.VERSION }}.json
+        run: php src/qit-tests.php slack:notify output-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json
