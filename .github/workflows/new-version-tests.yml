@@ -108,4 +108,5 @@ jobs:
         if: always()
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        run: php src/qit-tests.php slack:notify output-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json
+          CI_SECRET: ${{ secrets.CI_SECRET }}
+        run: php src/qit-tests.php slack:notify output-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json --qit
