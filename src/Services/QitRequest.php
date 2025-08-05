@@ -169,7 +169,7 @@ class QitRequest {
         $unique_plugins = array_values(array_unique($all_plugins));
 
         // Build message blocks without plugin information
-        $message_blocks = $this->build_qit_message($group_id, $total_tests, $failed_count, $failures);
+        $test_details = $this->build_test_details($group_id, $total_tests, $failed_count, $failures);
 
         // Get CI secret for authentication
         $ci_secret = getenv('CI_SECRET');
@@ -178,12 +178,9 @@ class QitRequest {
         }
 
         $payload = json_encode([
-            'message' => [
-                'text' => 'QIT Test Failures Detected',
-                'blocks' => $message_blocks
-            ],
-            'plugins' => $unique_plugins,
-            'ci_secret' => $ci_secret
+            'test_details' => $test_details,
+            'plugins'      => $unique_plugins,
+            'ci_secret'    => $ci_secret
         ]);
 
         $context = stream_context_create([
@@ -214,7 +211,7 @@ class QitRequest {
      * @param array $failures
      * @return array
      */
-    private function build_qit_message(string $group_id, int $total_tests, int $failed_count, array $failures): array {
+    private function build_test_details(string $group_id, int $total_tests, int $failed_count, array $failures): array {
         // Get basic info from first failure for environment details
         $first_failure = $failures[0] ?? [];
         $parser = App::make(ResultsParser::class);
@@ -244,18 +241,14 @@ class QitRequest {
             $php_version
         );
 
-        if (!empty($manager_url)) {
-            $message .= sprintf("\n*Test Results URL:* %s", $manager_url);
-        }
-
-        return [
-            [
-                'type' => 'section',
-                'text' => [
-                    'type' => 'mrkdwn',
-                    'text' => $message
-                ]
-            ]
+        return  [
+            'failed_count'        => $failed_count,
+            'total_tests'         => $total_tests,
+            'status'              => $status,
+            'wordpress_version'   => $wordpress_version,
+            'woocommerce_version' => $woocommerce_version,
+            'php_version'         => $php_version,
+            'manager_url'         => empty($manager_url) ? '' : $manager_url
         ];
     }
 }

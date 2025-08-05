@@ -120,14 +120,6 @@ class ResultsParser {
     }
 
     /**
-     * Legacy method for backward compatibility - kept for existing usage
-     * @deprecated Use extract_plugin_info_from_failed_test() instead
-     */
-    public function extract_plugin_slugs_from_failed_test(array $test_run): array {
-        return $this->extract_plugin_slugs_from_test_run($test_run);
-    }
-
-    /**
      * Parse JSON-encoded log content to make it readable.
      *
      * @param string $json_log

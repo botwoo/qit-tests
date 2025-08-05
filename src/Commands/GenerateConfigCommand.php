@@ -52,14 +52,6 @@ class GenerateConfigCommand extends Command {
         $io->title('QIT Config Generator');
         $io->text("Generating config for {$platform} {$version} ({$channel})");
 
-        // Get PHP versions and show them to user
-        try {
-            $php_versions = $this->qit_request->get_random_php_versions();
-            $io->text("PHP versions (from QIT API): {$php_versions['primary']}, {$php_versions['secondary']}");
-        } catch (Exception $e) {
-            $io->text("PHP versions (fallback): 8.4, 7.4 (API unavailable: {$e->getMessage()})");
-        }
-
         try {
             // Generate both canonical and legacy configs
             $canonical_config = $this->generate_config($platform, $version, $channel, 'canonical');
@@ -206,7 +198,7 @@ class GenerateConfigCommand extends Command {
      */
     private function generate_canonical_test_matrix(array $basic_config, array $plugin_config): array {
         $plugin_methods = [
-            'get_canonical_payments_shipping_group',
+            'get_canonical_standard_group',
             'get_canonical_products_customization_group',
             'get_canonical_subscriptions_automation_group',
             'get_canonical_shipping_tax_group',
@@ -286,7 +278,7 @@ class GenerateConfigCommand extends Command {
      *
      * @return array
      */
-    private function get_canonical_payments_shipping_group(): array {
+    private function get_canonical_standard_group(): array {
         return [
             "woocommerce-payments",
             "woocommerce-gateway-stripe",
@@ -296,7 +288,8 @@ class GenerateConfigCommand extends Command {
             "woocommerce-table-rate-shipping",
             "woocommerce-gift-cards",
             "woocommerce-back-in-stock-notifications",
-            "woocommerce-google-analytics-integration"
+            "woocommerce-google-analytics-integration",
+            "facebook-for-woocommerce"
         ];
     }
 
@@ -372,7 +365,8 @@ class GenerateConfigCommand extends Command {
             "automatewoo",
             "automatewoo-referrals",
             "mailpoet",
-            "woocommerce-analytics"
+            "woocommerce-analytics",
+            "facebook-for-woocommerce"
         ];
     }
 
