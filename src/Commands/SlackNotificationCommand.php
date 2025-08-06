@@ -33,7 +33,8 @@ class SlackNotificationCommand extends Command {
             ->setDescription( self::$defaultDescription )
             ->setHelp('This command reads QIT test results from a JSON file and sends Slack notifications only when there are test failures.')
             ->addArgument('json-file', InputArgument::REQUIRED, 'Path to the JSON file containing test results')
-            ->addOption('qit', null, InputOption::VALUE_NONE, 'Send to QIT webhook instead of Slack');
+            ->addOption('qit', null, InputOption::VALUE_NONE, 'Send to QIT webhook instead of Slack')
+            ->addOption('daily-random', null, InputOption::VALUE_NONE, 'Mark notification as daily randomized test');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int {

@@ -33,6 +33,10 @@ class GenerateConfigCommand extends Command {
             ->addOption('platform', 'p', InputOption::VALUE_REQUIRED, 'Platform (WordPress or WooCommerce)')
             ->addOption('target-version', 't', InputOption::VALUE_REQUIRED, 'Version number to test')
             ->addOption('channel', 'c', InputOption::VALUE_OPTIONAL, 'Release channel', 'stable')
+            ->addOption('randomized', 'r', InputOption::VALUE_NONE, 'Generate config with randomized environment versions')
+            ->addOption('php-version', null, InputOption::VALUE_OPTIONAL, 'Override PHP version for randomized mode')
+            ->addOption('woocommerce-version', null, InputOption::VALUE_OPTIONAL, 'Override WooCommerce version for randomized mode')
+            ->addOption('wordpress-version', null, InputOption::VALUE_OPTIONAL, 'Override WordPress version for randomized mode')
             ->addOption('output', 'o', InputOption::VALUE_OPTIONAL, 'Output file path', './config/generated-config.json');
     }
 
@@ -42,20 +46,29 @@ class GenerateConfigCommand extends Command {
         $platform = $input->getOption('platform');
         $version = $input->getOption('target-version');
         $channel = $input->getOption('channel');
+        $randomized = $input->getOption('randomized');
         $output_file = $input->getOption('output');
 
-        if (!$platform || !$version) {
-            $io->error('Both --platform and --target-version options are required.');
+        // For randomized mode, platform and version are not required
+        if (!$randomized && (!$platform || !$version)) {
+            $io->error('Both --platform and --target-version options are required (unless using --randomized mode).');
             return Command::FAILURE;
         }
 
         $io->title('QIT Config Generator');
-        $io->text("Generating config for {$platform} {$version} ({$channel})");
-
+        
         try {
-            // Generate both canonical and legacy configs
-            $canonical_config = $this->generate_config($platform, $version, $channel, 'canonical');
-            $legacy_config = $this->generate_config($platform, $version, $channel, 'legacy');
+            if ($randomized) {
+                $io->text('Generating randomized configuration...');
+                // Generate both canonical and mixed configs with randomized environment
+                $canonical_config = $this->generate_randomized_config('canonical', $input);
+                $mixed_config = $this->generate_randomized_config('mixed', $input);
+            } else {
+                $io->text("Generating config for {$platform} {$version} ({$channel})");
+                // Generate both canonical and mixed configs
+                $canonical_config = $this->generate_config($platform, $version, $channel, 'canonical');
+                $mixed_config = $this->generate_config($platform, $version, $channel, 'mixed');
+            }
             
             // Generate output file paths
             $base_path = pathinfo($output_file, PATHINFO_DIRNAME);
@@ -63,18 +76,20 @@ class GenerateConfigCommand extends Command {
             $extension = pathinfo($output_file, PATHINFO_EXTENSION);
             
             $canonical_file = $base_path . '/' . $base_name . '-canonical.' . $extension;
-            $legacy_file = $base_path . '/' . $base_name . '-legacy.' . $extension;
+            $mixed_file = $base_path . '/' . $base_name . '-mixed.' . $extension;
             
             // Save both configs
             $this->save_config($canonical_config, $canonical_file);
-            $this->save_config($legacy_config, $legacy_file);
+            $this->save_config($mixed_config, $mixed_file);
             
             $io->success("Configuration files generated successfully:");
             $io->text("Canonical config: {$canonical_file}");
-            $io->text("Legacy config: {$legacy_file}");
-            $io->text("Platform: {$platform}");
-            $io->text("Version: {$version}");
-            $io->text("Channel: {$channel}");
+            $io->text("Mixed config: {$mixed_file}");
+            if (!$randomized) {
+                $io->text("Platform: {$platform}");
+                $io->text("Version: {$version}");
+                $io->text("Channel: {$channel}");
+            }
             
             return Command::SUCCESS;
 
@@ -85,12 +100,54 @@ class GenerateConfigCommand extends Command {
     }
 
     /**
+     * Generate randomized configuration using QIT API versions.
+     *
+     * @param string $type The config type ('canonical' or 'mixed')
+     * @param InputInterface $input Command input for overrides
+     * @return array
+     * @throws Exception
+     */
+    private function generate_randomized_config(string $type, InputInterface $input): array {
+        // Get available versions from QIT API
+        $php_versions = $this->qit_request->get_php_versions();
+        $wc_versions = $this->qit_request->get_woocommerce_versions();
+        $wp_versions = $this->qit_request->get_wordpress_versions();
+
+        // Get random selections or use overrides
+        $php_version = $input->getOption('php-version') ?: $php_versions[array_rand($php_versions)];
+        $wc_version = $input->getOption('woocommerce-version') ?: $wc_versions[array_rand($wc_versions)];
+        $wp_version = $input->getOption('wordpress-version') ?: $wp_versions[array_rand($wp_versions)];
+
+        // Get secondary PHP version for plugin tests
+        $secondary_php_versions = array_diff($php_versions, [$php_version]);
+        $secondary_php = !empty($secondary_php_versions) ? $secondary_php_versions[array_rand($secondary_php_versions)] : $php_version;
+
+        $basic_config = [
+            'php_version' => $php_version,
+            'woocommerce_version' => $wc_version,
+            'wordpress_version' => $wp_version
+        ];
+        
+        $plugin_config = [
+            'php_version' => $secondary_php,
+            'woocommerce_version' => $wc_version,
+            'wordpress_version' => $wp_version
+        ];
+        
+        if ($type === 'canonical') {
+            return $this->generate_canonical_test_matrix($basic_config, $plugin_config);
+        } else {
+            return $this->generate_mixed_test_matrix($basic_config, $plugin_config);
+        }
+    }
+
+    /**
      * Generate the configuration array based on platform, version, channel, and type.
      *
      * @param string $platform The platform (WordPress or WooCommerce)
      * @param string $version The version number
      * @param string $channel The release channel
-     * @param string $type The config type ('canonical' or 'legacy')
+     * @param string $type The config type ('canonical' or 'mixed')
      * @return array
      * @throws Exception
      */
@@ -115,7 +172,7 @@ class GenerateConfigCommand extends Command {
      *
      * @param string $version The WooCommerce version
      * @param string $channel The release channel
-     * @param string $type The config type ('canonical' or 'legacy')
+     * @param string $type The config type ('canonical' or 'mixed')
      * @return array
      */
     private function get_woocommerce_config(string $version, string $channel, string $type = 'canonical'): array {
@@ -146,7 +203,7 @@ class GenerateConfigCommand extends Command {
         if ($type === 'canonical') {
             return $this->generate_canonical_test_matrix($basic_config, $plugin_config);
         } else {
-            return $this->generate_legacy_test_matrix($basic_config, $plugin_config);
+            return $this->generate_mixed_test_matrix($basic_config, $plugin_config);
         }
     }
 
@@ -155,7 +212,7 @@ class GenerateConfigCommand extends Command {
      *
      * @param string $version The WordPress version
      * @param string $channel The release channel
-     * @param string $type The config type ('canonical' or 'legacy')
+     * @param string $type The config type ('canonical' or 'mixed')
      * @return array
      */
     private function get_wordpress_config(string $version, string $channel, string $type = 'canonical'): array {
@@ -184,7 +241,7 @@ class GenerateConfigCommand extends Command {
         if ($type === 'canonical') {
             return $this->generate_canonical_test_matrix($basic_config, $plugin_config);
         } else {
-            return $this->generate_legacy_test_matrix($basic_config, $plugin_config);
+            return $this->generate_mixed_test_matrix($basic_config, $plugin_config);
         }
     }
 
@@ -231,14 +288,14 @@ class GenerateConfigCommand extends Command {
     }
 
     /**
-     * Generate legacy test matrix with basic test + legacy plugin groups.
+     * Generate mixed test matrix with basic test + mixed plugin groups.
      *
      * @param array $basic_config Basic configuration without plugins
      * @param array $plugin_config Base configuration for plugin tests
      * @return array
      * @throws Exception
      */
-    private function generate_legacy_test_matrix(array $basic_config, array $plugin_config): array {
+    private function generate_mixed_test_matrix(array $basic_config, array $plugin_config): array {
         $plugin_methods = [
             'get_essentials_revshare_plugins',
             'get_sales_marketing_plugins',
