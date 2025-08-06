@@ -282,6 +282,8 @@ class GenerateConfigCommand extends Command {
         return [
             "woocommerce-payments",
             "woocommerce-gateway-stripe",
+            "woocommerce-square",
+            "woocommerce-payfast-gateway",
             "google-listings-and-ads",
             "woocommerce-shipping",
             "woocommerce-shipment-tracking",
@@ -381,7 +383,9 @@ class GenerateConfigCommand extends Command {
             "google-listings-and-ads",
             "facebook-for-woocommerce",
             "woocommerce-gateway-stripe",
+            "woocommerce-square",
             "woocommerce-paypal-payments",
+            "woocommerce-payfast-gateway",
             "woocommerce-services", // WooCommerce Shipping & Tax
             "elementor",
             "wp-mail-smtp",
@@ -423,6 +427,7 @@ class GenerateConfigCommand extends Command {
             "automatewoo",
             "woocommerce-zapier",
             "woocommerce-gateway-stripe",
+            "woocommerce-square",
             "elementor"
         ];
     }

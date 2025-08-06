@@ -10,6 +10,8 @@
             "additional_plugins": [
               "woocommerce-payments",
               "woocommerce-gateway-stripe",
+              "woocommerce-square",
+              "woocommerce-payfast-gateway",
               "google-listings-and-ads",
               "woocommerce-shipping",
               "woocommerce-shipment-tracking",
