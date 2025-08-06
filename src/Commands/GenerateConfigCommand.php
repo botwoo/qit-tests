@@ -134,11 +134,13 @@ class GenerateConfigCommand extends Command {
             'wordpress_version' => $wp_version
         ];
         
-        if ($type === 'canonical') {
-            return $this->generate_canonical_test_matrix($basic_config, $plugin_config);
-        } else {
-            return $this->generate_mixed_test_matrix($basic_config, $plugin_config);
-        }
+        $test_matrix = ($type === 'canonical') 
+            ? $this->generate_canonical_test_matrix($basic_config, $plugin_config)
+            : $this->generate_mixed_test_matrix($basic_config, $plugin_config);
+
+        return [
+            "activation" => $test_matrix
+        ];
     }
 
     /**
