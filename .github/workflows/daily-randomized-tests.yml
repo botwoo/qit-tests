@@ -1,0 +1,90 @@
+name: Daily Randomized Tests
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC (randomized hour to avoid peak times)
+    - cron: '0 6 * * *'
+  workflow_dispatch:       # Allow manual triggering
+
+jobs:
+  qit-tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config_type: [canonical, mixed]
+    env:
+      CONFIG_TYPE: ${{ matrix.config_type }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: posix, curl, mbstring, xml, zip, phar, openssl
+
+      - name: Install dependencies
+        run: composer install --no-dev
+
+      - name: Generate randomized config files
+        id: generate-config
+        run: |
+          CONFIG_SUFFIX=$(date +"%Y%m%d%H%M")
+          echo "config_suffix=$CONFIG_SUFFIX" >> $GITHUB_OUTPUT
+          
+          echo "Generating randomized configuration for daily tests..."
+          php src/qit-tests.php generate:config \
+            --randomized \
+            --output="./config/daily-random-$CONFIG_SUFFIX.json"
+          
+          echo "Generated config files:"
+          ls -la ./config/daily-random-$CONFIG_SUFFIX-*.json
+
+      - name: Display generated config
+        run: |
+          echo "Generated randomized configuration file contents (${{ env.CONFIG_TYPE }}):"
+          cat "./config/daily-random-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json"
+
+      - name: Create empty zip for action requirement
+        run: |
+          echo "Creating empty zip file to satisfy action requirement..."
+          touch woocommerce.zip
+
+      - name: Checkout with PAT
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
+          repository: woocommerce/qit-action
+          path: .github/actions/qit-action
+
+      - name: Run QIT Tests (${{ env.CONFIG_TYPE }})
+        id: qit-tests
+        uses: ./.github/actions/qit-action
+        with:
+          extension: woocommerce
+          zip: ./woocommerce.zip
+          config: ./config/daily-random-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json
+          partner-user: ${{ secrets.PARTNER_USER }}
+          partner-secret: ${{ secrets.PARTNER_SECRET }}
+
+      - name: Output test results
+        if: always()
+        run: |
+          echo "QIT Group ID: ${{ steps.qit-tests.outputs.group-id }}"
+          echo "Daily randomized test completed (${{ env.CONFIG_TYPE }}) - check results above"
+
+      - name: Fetch Results From QIT
+        if: always()
+        run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json
+
+      - name: Output Results
+        run: cat output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json
+
+      - name: Send Slack Notification on Failures
+        if: always()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          CI_SECRET: ${{ secrets.CI_SECRET }}
+        run: php src/qit-tests.php slack:notify output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json --qit --daily-random
