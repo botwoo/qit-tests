@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        config_type: [canonical, legacy]
+        config_type: [canonical, mixed]
     env:
       PLATFORM: ${{ github.event.client_payload.platform || inputs.platform }}
       VERSION: ${{ github.event.client_payload.version || inputs.version }}
@@ -70,9 +70,6 @@ jobs:
         run: |
           echo "Generated configuration file contents (${{ env.CONFIG_TYPE }}):"
           cat "./config/new-version-${{ env.PLATFORM }}-${{ env.VERSION }}-${{ env.CONFIG_TYPE }}.json"
-
-      - name: Download WooCommerce if needed
-        run: php src/qit-tests.php download:woo-nightly
 
       - name: Checkout with PAT
         uses: actions/checkout@v4

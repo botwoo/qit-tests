@@ -30,10 +30,6 @@ jobs:
           repository: woocommerce/qit-action
           path: .github/actions/qit-action
 
-      # - name: Download WooCommerce Nightly
-      #   run: |
-      #     php src/qit-tests.php download:woo-nightly
-
       - name: Run QIT Tests
         id: qit-tests
         uses: ./.github/actions/qit-action
