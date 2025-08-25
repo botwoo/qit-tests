@@ -85,6 +85,6 @@ jobs:
       - name: Send Slack Notification on Failures
         if: always()
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          QIT_WEBHOOK_URL: ${{ secrets.QIT_WEBHOOK_URL }}
           CI_SECRET: ${{ secrets.CI_SECRET }}
         run: php src/qit-tests.php slack:notify output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json --qit --daily-random
