@@ -197,7 +197,7 @@ class QitRequest {
         }
 
         $payload = json_encode([
-            'test_details' => $test_details,
+            'test_details' => [$test_details],
             'plugins'      => $unique_plugins,
             'ci_secret'    => $ci_secret
         ]);
