@@ -34,7 +34,16 @@ class QitRequest {
         $response = @file_get_contents(self::API_ENDPOINT, false, $context);
         
         if ($response === false) {
-            throw new Exception('Failed to fetch environment data from QIT API');
+            $error = error_get_last();
+            $http_response_header = $http_response_header ?? [];
+            
+            $error_details = [
+                'endpoint' => self::API_ENDPOINT,
+                'last_error' => $error ? $error['message'] : 'Unknown error',
+                'http_headers' => $http_response_header
+            ];
+            
+            throw new Exception('Failed to fetch environment data from QIT API: ' . json_encode($error_details, JSON_PRETTY_PRINT));
         }
 
         $data = json_decode($response, true);
@@ -195,10 +204,21 @@ class QitRequest {
             ]
         ]);
 
-        $response = file_get_contents($webhook_url, false, $context);
+        $response = @file_get_contents($webhook_url, false, $context);
         
         if ($response === false) {
-            throw new Exception('Failed to send QIT notification');
+            $error = error_get_last();
+            $http_response_header = $http_response_header ?? [];
+            
+            $error_details = [
+                'webhook_url' => $webhook_url,
+                'payload_size' => strlen($payload),
+                'last_error' => $error ? $error['message'] : 'Unknown error',
+                'http_headers' => $http_response_header,
+                'payload_preview' => substr($payload, 0, 500) . (strlen($payload) > 500 ? '...' : '')
+            ];
+            
+            throw new Exception('Failed to send QIT notification: ' . json_encode($error_details, JSON_PRETTY_PRINT));
         }
     }
 
