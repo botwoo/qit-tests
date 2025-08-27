@@ -21,29 +21,39 @@ class QitRequest {
      * @throws Exception
      */
     public function fetch_environment_data(): array {
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'GET',
-                'timeout' => self::TIMEOUT,
-                'header' => [
-                    'User-Agent: QIT-Tests/1.0'
-                ]
-            ]
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => self::API_ENDPOINT,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'User-Agent: QIT-Tests/1.0'
+            ],
+            CURLOPT_TIMEOUT => self::TIMEOUT
         ]);
 
-        $response = @file_get_contents(self::API_ENDPOINT, false, $context);
+        $response = curl_exec($curl);
+        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($curl);
+        curl_close($curl);
         
-        if ($response === false) {
-            $error = error_get_last();
-            $http_response_header = $http_response_header ?? [];
-            
+        if ($response === false || !empty($curl_error)) {
             $error_details = [
                 'endpoint' => self::API_ENDPOINT,
-                'last_error' => $error ? $error['message'] : 'Unknown error',
-                'http_headers' => $http_response_header
+                'curl_error' => $curl_error,
+                'http_code' => $http_code
             ];
             
             throw new Exception('Failed to fetch environment data from QIT API: ' . json_encode($error_details, JSON_PRETTY_PRINT));
+        }
+        
+        if ($http_code >= 400) {
+            $error_details = [
+                'endpoint' => self::API_ENDPOINT,
+                'http_code' => $http_code,
+                'response_body' => $response
+            ];
+            
+            throw new Exception('QIT API request failed with HTTP ' . $http_code . ': ' . json_encode($error_details, JSON_PRETTY_PRINT));
         }
 
         $data = json_decode($response, true);
@@ -192,33 +202,43 @@ class QitRequest {
             'ci_secret'    => $ci_secret
         ]);
 
-        $context = stream_context_create([
-            'http' => [
-                'method' => 'POST',
-                'header' => [
-                    'Content-Type: application/json',
-                    'Content-Length: ' . strlen($payload)
-                ],
-                'content' => $payload,
-                'timeout' => 30
-            ]
+        $curl = curl_init();
+        curl_setopt_array($curl, [
+            CURLOPT_URL => $webhook_url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $payload,
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json'
+            ],
+            CURLOPT_TIMEOUT => 30
         ]);
 
-        $response = @file_get_contents($webhook_url, false, $context);
+        $response = curl_exec($curl);
+        $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $curl_error = curl_error($curl);
+        curl_close($curl);
         
-        if ($response === false) {
-            $error = error_get_last();
-            $http_response_header = $http_response_header ?? [];
-            
+        if ($response === false || !empty($curl_error)) {
             $error_details = [
                 'webhook_url' => $webhook_url,
                 'payload_size' => strlen($payload),
-                'last_error' => $error ? $error['message'] : 'Unknown error',
-                'http_headers' => $http_response_header,
+                'curl_error' => $curl_error,
+                'http_code' => $http_code,
                 'payload_preview' => substr($payload, 0, 500) . (strlen($payload) > 500 ? '...' : '')
             ];
             
             throw new Exception('Failed to send QIT notification: ' . json_encode($error_details, JSON_PRETTY_PRINT));
+        }
+        
+        if ($http_code >= 400) {
+            $error_details = [
+                'webhook_url' => $webhook_url,
+                'http_code' => $http_code,
+                'response_body' => $response
+            ];
+            
+            throw new Exception('QIT notification failed with HTTP ' . $http_code . ': ' . json_encode($error_details, JSON_PRETTY_PRINT));
         }
     }
 
