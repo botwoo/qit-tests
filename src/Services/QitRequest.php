@@ -224,8 +224,7 @@ class QitRequest {
                 'webhook_url' => $webhook_url,
                 'payload_size' => strlen($payload),
                 'curl_error' => $curl_error,
-                'http_code' => $http_code,
-                'payload_preview' => substr($payload, 0, 500) . (strlen($payload) > 500 ? '...' : '')
+                'http_code' => $http_code
             ];
             
             throw new Exception('Failed to send QIT notification: ' . json_encode($error_details, JSON_PRETTY_PRINT));
