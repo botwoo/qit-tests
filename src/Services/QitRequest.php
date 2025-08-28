@@ -239,6 +239,10 @@ class QitRequest {
             
             throw new Exception('QIT notification failed with HTTP ' . $http_code . ': ' . json_encode($error_details, JSON_PRETTY_PRINT));
         }
+
+        // Output response when no error occurs
+        $io->success('QIT notification sent successfully');
+        $io->writeln('Response: ' . $response);
     }
 
     /**
