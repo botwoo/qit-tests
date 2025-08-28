@@ -80,6 +80,7 @@ jobs:
         run: ./qit group:fetch --group-identifier=${{ steps.qit-tests.outputs.group-id }} --json > output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json
 
       - name: Output Results
+        if: always()
         run: cat output-daily-${{ steps.generate-config.outputs.config_suffix }}-${{ env.CONFIG_TYPE }}.json
 
       - name: Send Slack Notification on Failures
