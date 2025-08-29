@@ -98,9 +98,11 @@ class ResultsParser {
                 if (isset($media_item['data']['PHP Debug Log']) && is_array($media_item['data']['PHP Debug Log'])) {
                     $log_sources[] = implode("\n", $media_item['data']['PHP Debug Log']);
                 }
-                if (isset($media_item['data']['JavaScript Console Log']) && is_array($media_item['data']['JavaScript Console Log'])) {
-                    $log_sources[] = implode("\n", $media_item['data']['JavaScript Console Log']);
-                }
+
+                // TODO: Uncomment this when we have improved our JS Logging on the QIT Reports
+                // if (isset($media_item['data']['JavaScript Console Log']) && is_array($media_item['data']['JavaScript Console Log'])) {
+                //     $log_sources[] = implode("\n", $media_item['data']['JavaScript Console Log']);
+                // }
             }
         }
 
