@@ -160,8 +160,15 @@ class ResultsParser {
         $plugins = [];
 
         // Pattern 1: File paths - wp-content/plugins/plugin-name/
-        if (preg_match_all('/wp-content[\/\\\\]+plugins[\/\\\\]+([a-zA-Z0-9\-_]+)[\/\\\\]/', $log_content, $matches)) {
-            $plugins = array_merge($plugins, $matches[1]);
+        // Updated to exclude vendor and vendor-prefixed directories
+        if (preg_match_all('/wp-content[\/\\\\]+plugins[\/\\\\]+([a-zA-Z0-9\-_]+)[\/\\\\](?!vendor(?:-prefixed)?[\/\\\\])/', $log_content, $matches)) {
+            // Additional filtering to exclude entries that have vendor paths
+            foreach ($matches[0] as $index => $full_match) {
+                // Check if the full match contains vendor or vendor-prefixed after the plugin name
+                if (!preg_match('/[\/\\\\]vendor(?:-prefixed)?[\/\\\\]/', $full_match)) {
+                    $plugins[] = $matches[1][$index];
+                }
+            }
         }
 
         // Pattern 2: Plugin installation URLs - downloads.wordpress.org/plugin/plugin-name.version.zip
