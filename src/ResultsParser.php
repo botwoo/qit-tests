@@ -122,7 +122,7 @@ class ResultsParser {
     }
 
     /**
-     * Parse JSON-encoded log content to make it readable.
+     * Parse JSON-encoded log content to extract fatal errors only.
      *
      * @param string $json_log
      * @return string
@@ -133,21 +133,13 @@ class ResultsParser {
             return $json_log; // Return as-is if not valid JSON
         }
 
-        $readable_content = '';
-        
-        // Handle nested debug_log structure
-        if (isset($decoded['debug_log'])) {
-            $debug_data = json_decode($decoded['debug_log'], true);
-            if (is_array($debug_data)) {
-                foreach ($debug_data as $entry) {
-                    if (isset($entry['message'])) {
-                        $readable_content .= $entry['message'] . "\n";
-                    }
-                }
-            }
+        // Check if qm_logs.fatal exists and return its content
+        if (isset($decoded['qm_logs']['fatal'])) {
+            // Return the fatal property as JSON string for processing
+            return json_encode($decoded['qm_logs']['fatal']);
         }
 
-        return $readable_content;
+        return '';
     }
 
     /**
