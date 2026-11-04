@@ -76,6 +76,7 @@ jobs:
         with:
           token: ${{ secrets.PAT_TOKEN }}
           repository: woocommerce/qit-action
+          ref: v1
           path: .github/actions/qit-action
 
       - name: Run QIT Tests (${{ env.CONFIG_TYPE }})
